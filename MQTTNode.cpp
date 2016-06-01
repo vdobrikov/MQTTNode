@@ -82,33 +82,51 @@ ESP8266MQTTNode::ESP8266MQTTNode(const char* host, const char* mqttUsername, con
 	this->connectedCallback = connectCallback;
 	this->client.setCallback(callback);
 	this->client.setClient(wifiClient);
+	pinMode(LED_BUILTIN, OUTPUT);
+}
+
+void ESP8266MQTTNode::flipLed() {
+	int state = digitalRead(LED_BUILTIN);
+	digitalWrite(LED_BUILTIN, !state);
 }
 
 const char* ESP8266MQTTNode::generateNodeName() {
   return String(ESP.getChipId()).c_str();
 }
 
+void ESP8266MQTTNode::startBlinking(float freq) {
+	ledFlipper.attach(freq, ESP8266MQTTNode::flipLed);
+}
+
+void ESP8266MQTTNode::stopBlinking() {
+	ledFlipper.detach();
+	digitalWrite(LED_BUILTIN, HIGH);
+}
+
 void ESP8266MQTTNode::setupWifi(const char* ssid, const char* wifiPassword) {
 
 	delay(10);
 	// We start by connecting to a WiFi network
+	startBlinking(0.3);
 	MQTTNODE_PRINTLN();
 	MQTTNODE_PRINT("Connecting to ");
 	MQTTNODE_PRINTLN(ssid);
 
 	WiFi.begin(ssid, wifiPassword);
 
-	uint32_t connectionTimeoutMs = 10000;
-	uint32_t lastConnectionRetry = millis();
+	uint32_t connectionTimeoutMs = 30 * 60 * 1000; // 30 min
+	uint32_t startConnectionTime = millis();
 
 	while (WiFi.status() != WL_CONNECTED) {
 		delay(500);
 		MQTTNODE_PRINT(".");
 
-		if (millis() - lastConnectionRetry > connectionTimeoutMs) {
-			break;
+		if (millis() - startConnectionTime > connectionTimeoutMs) {
+			// Restart node
+			ESP.restart();
 		}
 	}
+	stopBlinking();
 
 	MQTTNODE_PRINTLN("");
 	MQTTNODE_PRINT("WiFi connected: ");
@@ -129,7 +147,9 @@ void ESP8266MQTTNode::begin() {
 	setupWifi(wifi_ssid, wifi_password);
 
 	// Ensure the client is connected
+	startBlinking(0.7);
 	reconnect();
+	stopBlinking();
 }
 
 void ESP8266MQTTNode::loop() {
@@ -141,7 +161,9 @@ void ESP8266MQTTNode::loop() {
 
 	// Ensure we're still connected to the MQTT server
 	if (!isMqttConnected()) {
+		startBlinking(0.7);
 		reconnect();
+		stopBlinking();
 	}
 
 	// Check for any new broadcasts

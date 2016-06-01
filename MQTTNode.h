@@ -9,6 +9,7 @@
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <Ticker.h>
 
 #define MQTTNODE_DEBUG
 
@@ -55,6 +56,7 @@ class ESP8266MQTTNode : public MQTTNode{
 
 	private:
 		WiFiClient wifiClient;
+        Ticker ledFlipper;
 
 		const char* wifi_ssid = NULL;
 		const char* wifi_password = NULL;
@@ -62,6 +64,9 @@ class ESP8266MQTTNode : public MQTTNode{
 		void setupWifi(const char*, const char*);
         bool isWifiConnected();
         const char* generateNodeName();
+        void startBlinking(float);
+        void stopBlinking();
+        static void flipLed();
 
 	public:
         ESP8266MQTTNode(const char*, const char*);
